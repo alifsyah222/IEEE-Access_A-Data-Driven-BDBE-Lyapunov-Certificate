@@ -176,23 +176,20 @@ def freerun(w, nl):
     return float(100*(1 - np.linalg.norm(y[n:]-ys[n:])/np.linalg.norm(y[n:]-y[n:].mean())))
 
 
-def sgd_divergence_sweep(nl, alphas):
-    """Run SGD at each alpha; return status ('ok'/'div') and blow-up instance."""
-    out = []
-    for alpha in alphas:
-        w = np.full(O, W0); diverged_at = None
-        for k in range(n, N):
-            x = xvec(k); yn, J, _ = forward(w, x, nl); e = y[k]-yn
-            w = w + alpha*e*J
-            if not np.isfinite(w).all() or np.abs(w).max() > 1e6:
-                diverged_at = k; break
-        out.append((alpha, 'div' if diverged_at else 'ok', diverged_at))
-    return out
 
 def main():
     print("="*60); print("ALGORITHM 1 - CERTIFICATE AUDIT (final, full-Python)"); print("="*60)
     stat = data_statistics()
     print(f"max||phi||^2={stat['max_phi2']:.3f}  lam_min/max={stat['lam_min']:.2e}/{stat['lam_max']:.3f}  mu_L={stat['mu_L']:.2e}")
+
+    # Shape of the sliding PE profile of Fig. 2, quoted in Section IV-D.
+    # "Numerical zero" means below 1e-12, i.e. at the level of floating-point
+    # noise for a matrix that is positive semidefinite by construction.
+    sl = np.array(stat['slide_mu'])
+    frac0 = float(np.mean(sl < 1e-12))
+    print("sliding PE profile (L=%d): %.1f%% of windows at numerical zero (<1e-12);"
+          " max elsewhere = %.2e; median = %.2e"
+          % (L, 100*frac0, sl[sl >= 1e-12].max(), np.median(sl)))
 
     cases = [('NARX','SGD',0.5,None),('NARX','EKF',None,2.0),('NARX','SGD',1.0,None),
              ('NARX','EKF',None,1.0),('NARX','SGD',0.75,None),('NARX','EKF',None,0.05),
@@ -217,6 +214,25 @@ def main():
     rep = R['NARX-EKF-1.0']
     M_bar, r_bar = curvature(rep['cbar'], stat['X'], rep['omega_bar'])
     print(f"\nTier2: cbar={rep['cbar']:.3f} omega_bar={rep['omega_bar']:.3f} M_bar={M_bar:.3f} r_bar={r_bar:.3f}")
+
+    # BDBE ball of Eq. (30) at R = 1. We deliberately take v_bar = 0, which
+    # makes the number a rigorous LOWER bound on the certified ball and
+    # removes any need to estimate the sensor noise: r_bar is quadratic in
+    # omega_bar and already dominates d_bar, so any plausible v_bar changes
+    # the result by a couple of percent at most.
+    def bdbe_ball(v_bar, Rv=1.0):
+        d_bar = v_bar + r_bar
+        ball_V = d_bar**2*(rep['pmax'] + Q_)/(Rv*Q_)
+        return ball_V, (rep['pmax']*ball_V)**0.5
+    bV, bw = bdbe_ball(0.0)
+    print("BDBE ball (Eq. 30, R=1, v_bar=0): limsup V <= %.2e  ->  ||omega|| <= %.2e"
+          % (bV, bw))
+    print("  vs empirical working-ball radius %.2f  ->  bound is %.0fx looser"
+          % (rep['omega_bar'], bw/rep['omega_bar']))
+    print("  sensitivity to v_bar:", end=" ")
+    for v in (0.0, 0.03, 0.09, 0.5):
+        print("v=%.2f:%.2e" % (v, bdbe_ball(v)[1]), end="  ")
+    print()
     print("Jacobian window-PE mu_L^J (Remark 3): ARMA=%.2e  NARX=%.2e"
           % (R['ARMA-EKF-1.0']['mu_L_J'], R['NARX-EKF-1.0']['mu_L_J']))
 
@@ -303,6 +319,23 @@ def main():
     ax.legend(fontsize=8, loc="lower right"); fig.tight_layout()
     fig.savefig("fig5_sgd_sweep.png", dpi=150); plt.close(fig)
     print("SGD divergence onset: ARMA~" + str(on_a) + ", NARX~" + str(on_n))
+
+    # blow-up instance for large alpha (quoted in Section IV-D; these values
+    # lie beyond the range plotted in Fig. 5)
+    def blowup_instance(nl, alpha):
+        w = np.full(O, W0)
+        for k in range(n, N):
+            x = xvec(k); yy, J, _ = forward(w, x, nl)
+            w = w + alpha*(y[k]-yy)*J
+            if not np.isfinite(w).all() or np.abs(w).max() > 1e6:
+                return k
+        return None
+    print("blow-up instance k for large alpha:")
+    for a in (2.0, 3.0, 4.0, 5.0):
+        ka, kn = blowup_instance(False, a), blowup_instance(True, a)
+        print("  alpha=%.1f: ARMA %s | NARX %s"
+              % (a, ("k=%d" % ka) if ka else "bounded",
+                    ("k=%d" % kn) if kn else "bounded"))
 
     # ---------- Figs 6-8: best-run tracking (ARMA-FNN, EKF R=0.05) ----------
     def run_track(Rv, nl):
@@ -428,6 +461,8 @@ def main():
     print("curvature bound M_bar (R=1) ....... %6s | %6.2f" % ("---", M_bar))
     print("working-ball radius omega_bar ..... %6.2f | %6.2f"
           % (A['omega_bar'], Nx['omega_bar']))
+    print("remainder bound r_bar ............. %6s | %6.2f" % ("---", r_bar))
+    print("certified bound on ||omega|| ...... %6s | %6.2f" % ("---", bw))
     print("free-run fit, NRMSE ............... %5.1f%% | %5.1f%%"
           % (A['freerun'], Nx['freerun']))
     print("="*60)
