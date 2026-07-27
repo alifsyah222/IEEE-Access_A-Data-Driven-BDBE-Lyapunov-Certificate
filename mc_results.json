@@ -416,15 +416,35 @@
   },
   "conv_all_unchanged": true
  },
+ "spectrum": {
+  "M_bar": 4.702027583424734,
+  "omega_bar": 1.7641236945803709,
+  "r_bar": 7.316666217027582,
+  "cbar": 0.3812371923326747,
+  "pmax_run": 50.002232115442155,
+  "pmin_run": 0.0007994229862348301,
+  "ball_global": 365849.6461533604,
+  "n_eig_above_45": 31,
+  "n_w": 60,
+  "pmin_final": 0.0007994229862348301,
+  "pmax_final": 49.995272197630385,
+  "dir_factor": 250.0957894411979,
+  "dir_radius": 1462.838086841835,
+  "omega_bar_post": 1.6004620846896287,
+  "pmax_post": 50.002232115442155,
+  "ball_post": 301117.0542067462,
+  "tighten_pct": 17.69376918284046,
+  "k_post": 300
+ },
  "runtime": {
   "n_w": 60,
   "N": 3000,
   "instances": 2995,
-  "t_ekf_unmonitored_s": 0.15794819999791798,
-  "ms_per_instance_unmonitored": 0.05273729549179231,
-  "t_ekf_monitored_s": 0.49936069999967003,
-  "ms_per_instance_monitored": 0.166731452420591,
-  "t_sgd_run_s": 0.0621558000020741,
-  "peak_rss_mb": 75.0
+  "t_ekf_unmonitored_s": 0.12306659999740077,
+  "ms_per_instance_unmonitored": 0.04109068447325568,
+  "t_ekf_monitored_s": 0.5051222000001871,
+  "ms_per_instance_monitored": 0.16865515859772526,
+  "t_sgd_run_s": 0.0664147999996203,
+  "peak_rss_mb": 78.52734375
  }
 }

@@ -25,6 +25,7 @@ import audit_final as af
 O, N, n = af.O, af.N, af.n
 Q_NOM, P0, W0 = af.Q_, af.P0, af.W0
 E_TOL = af.E_TOL
+K_POST = 300          # post-transient horizon (k >= 300) for Section IV-D
 
 
 # --------------------------------------------------- cross-platform peak memory
@@ -179,6 +180,88 @@ def ordering_sensitivity():
     return out, rel, summary
 
 
+# --------------------------------- covariance spectrum / Tier-2 ball anatomy
+def spectrum_report():
+    """Section IV-D: the numbers that decompose why the Tier 2 ball is vacuous.
+
+    Runs one dedicated NARX-EKF pass at R=1 (prediction-first ordering, exactly
+    as in audit_final.run) while retaining the full weight trajectory and the
+    final covariance P(N), then reports:
+      - the Tier 2 constants M_bar, omega_bar, r_bar and the BDBE ball (Eq. 30)
+        at R=1, v_bar=0                                    (paper: 4.70, 1.76, 7.3, 3.7e5)
+      - the spectrum of P(N): eigen-directions still above 45   (paper: 31 of 60)
+      - the directional shrink factor sqrt(pmax/pmin) and the
+        directional radius in the best-excited direction    (paper: ~250, 1.5e3)
+      - the post-transient (k>=K_POST) proxies omega_bar, pmax
+        and how much the ball tightens                     (paper: 1.60, 50.0, <20%)
+    """
+    R, nl = 1.0, True                       # NARX-FNN, R = 1  (the Table 7 run)
+    w = np.full(O, W0); P = P0 * np.eye(O)
+    wt, cbar = [], 0.0
+    pmin_run, pmax_run = np.inf, 0.0
+    pmin_post, pmax_post = np.inf, 0.0
+    for k in range(n, N):
+        x = af.xvec(k); ynet, J, z = af.forward(w, x, nl); e = af.y[k] - ynet
+        P = P + Q_NOM * np.eye(O)                          # prediction step, Eq. (22)
+        S = J @ P @ J + R; K = (P @ J) / S; w = w + K * e
+        P = P - np.outer(K, J @ P)                         # measurement update, no +Q
+        ev = np.linalg.eigvalsh(P)
+        pmin_run, pmax_run = min(pmin_run, ev[0]), max(pmax_run, ev[-1])
+        if k >= K_POST:
+            pmin_post, pmax_post = min(pmin_post, ev[0]), max(pmax_post, ev[-1])
+        cbar = max(cbar, float(np.abs(af.unpack(w)[1]).max()))
+        wt.append(w.copy())
+    wt = np.array(wt); wf = wt[-1]
+    kk = np.arange(n, N)
+
+    # working-ball radius: global and post-transient (distance from final weight)
+    omega_bar = float(np.max(np.linalg.norm(wt - wf, axis=1)))
+    post = kk >= K_POST
+    omega_bar_post = float(np.max(np.linalg.norm(wt[post] - wf, axis=1)))
+
+    # curvature bound and BDBE ball of Eq. (30) at R=1, v_bar=0 (same as audit_final)
+    X = np.array([af.xvec(k) for k in range(n, N)])
+    def ball(pmax, om):
+        M_bar, r_bar = af.curvature(cbar, X, om)
+        d_bar = r_bar                                      # v_bar = 0
+        ball_V = d_bar ** 2 * (pmax + Q_NOM) / (R * Q_NOM)
+        return (pmax * ball_V) ** 0.5, M_bar, r_bar
+    b_global, M_bar, r_bar = ball(pmax_run, omega_bar)
+
+    # spectrum of the final covariance P(N)
+    evN = np.linalg.eigvalsh(P)
+    n_above45 = int((evN > 45).sum())
+    pmin_final, pmax_final = float(evN[0]), float(evN[-1])
+
+    # directional bound (Eq. 32): best-excited direction of P(N)
+    dir_factor = (pmax_run / pmin_final) ** 0.5
+    dir_radius = b_global / dir_factor
+
+    # post-transient re-evaluation of the ball
+    b_post, _, _ = ball(pmax_post, omega_bar_post)
+    tighten_pct = 100 * (1 - b_post / b_global)
+
+    rep = dict(
+        M_bar=M_bar, omega_bar=omega_bar, r_bar=r_bar, cbar=cbar,
+        pmax_run=pmax_run, pmin_run=pmin_run, ball_global=b_global,
+        n_eig_above_45=n_above45, n_w=O,
+        pmin_final=pmin_final, pmax_final=pmax_final,
+        dir_factor=dir_factor, dir_radius=dir_radius,
+        omega_bar_post=omega_bar_post, pmax_post=pmax_post,
+        ball_post=b_post, tighten_pct=tighten_pct, k_post=K_POST)
+
+    print(f"Tier 2 constants (NARX-EKF, R=1): "
+          f"M_bar={M_bar:.2f}  omega_bar={omega_bar:.2f}  r_bar={r_bar:.2f}")
+    print(f"BDBE ball (Eq. 30, v_bar=0): ||omega|| <= {b_global:.2e}")
+    print(f"spectrum of P(N): {n_above45} of {O} eigen-directions still above 45 "
+          f"(pmin={pmin_final:.2e}, pmax={pmax_final:.2f})")
+    print(f"directional bound (Eq. 32): shrink factor "
+          f"sqrt(pmax/pmin)={dir_factor:.0f}  ->  radius {dir_radius:.2e}")
+    print(f"post-transient (k>={K_POST}): omega_bar={omega_bar_post:.2f}  "
+          f"pmax={pmax_post:.1f}  ->  ball tightens by {tighten_pct:.1f}%")
+    return rep
+
+
 # ----------------------------------------------------------- runtime / memory
 def runtime_report():
     """Section III-E: per-instance EKF cost, fully-monitored run, peak memory."""
@@ -225,10 +308,12 @@ if __name__ == "__main__":
     mc = monte_carlo(30)
     print("=" * 70); print("Q-ORDERING AND q SENSITIVITY (EKF cases)"); print("=" * 70)
     osens, rel, osummary = ordering_sensitivity()
+    print("=" * 70); print("COVARIANCE SPECTRUM / TIER-2 BALL ANATOMY (Sec. IV-D)"); print("=" * 70)
+    spec = spectrum_report()
     print("=" * 70); print("RUNTIME / MEMORY"); print("=" * 70)
     rt = runtime_report()
     json.dump(dict(monte_carlo=mc, ordering=osens, ordering_rel=rel,
-                   ordering_summary=osummary, runtime=rt),
+                   ordering_summary=osummary, spectrum=spec, runtime=rt),
               open("mc_results.json", "w"), indent=1)
     print(f"\nmc_results.json saved. Total extension time "
           f"{time.perf_counter()-t0:.0f} s.")
