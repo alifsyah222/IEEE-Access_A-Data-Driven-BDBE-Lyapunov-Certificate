@@ -19,7 +19,7 @@ pdflatex main.tex     # third pass resolves all cross-references
 
 Requires `ieeeaccess.cls`, `IEEEtran.cls`, `IEEEtran.bst`, and the PNG assets
 (all included except `IEEEtran.bst`, which ships with TeX Live and Overleaf).
-Output: `main.pdf`, 15 pages, two-column IEEE Access format.
+Output: `main.pdf`, two-column IEEE Access format.
 
 On Overleaf: upload the whole folder, set the compiler to **pdfLaTeX**, and
 press Recompile twice.
@@ -69,7 +69,7 @@ local data file is needed. Total runtime is well under three minutes.
 |---|---|
 | `main.tex` | the paper (`ieeeaccess.cls`) |
 | `references.bib` | 30 references, BibTeX |
-| `main.pdf` | compiled output, 15 pages |
+| `main.pdf` | compiled output |
 | `audit_final.py` | Algorithm 1, full Python implementation (Tables 3-4, 7; Figs 1-8) |
 | `mc_ordering_extension.py` | revision experiments: Monte Carlo, ordering sensitivity, Sec. IV-D spectrum, runtime |
 | `mc_results.json` | outputs of the revision experiments |
