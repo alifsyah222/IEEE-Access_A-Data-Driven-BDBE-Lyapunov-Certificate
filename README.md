@@ -1,4 +1,4 @@
-# IEEE Access Paper Bundle — Nasution & Mahayana (2026)
+# IEEE Access Paper Bundle (2026)
 ## A Data-Driven Bounded-Disturbance Bounded-Error (BDBE) Lyapunov Certificate for Online EKF-Based Neural Identification of a Batch Distillation Column
 
 Everything in this bundle is reproducible from the public dataset with two
