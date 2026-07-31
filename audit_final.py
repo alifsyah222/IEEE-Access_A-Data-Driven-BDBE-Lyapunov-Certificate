@@ -13,7 +13,7 @@
 #                  matching Eq. (22) and the proof of Theorem 3.
 #
 #  Run:            python audit_final.py
-#  Requires:       numpy, scipy, openpyxl, matplotlib  (see requirements.txt)
+#  Requires:       numpy, openpyxl, matplotlib  (see requirements.txt)
 #  Runtime:        ~1-2 min (dominated by the 12 identifier runs + alpha sweep)
 #
 # -----------------------------------------------------------------------------
@@ -21,20 +21,21 @@
 # -----------------------------------------------------------------------------
 #  Console + results.json
 #    Data statistics (Algorithm 1, steps 1-3):
-#      max_k ||phi(k)||^2 ............. Table IV, row 1
-#      full-record lambda_min/lambda_max of the information matrix .. Table IV
-#      mu_L, window PE level (Eq. 18, non-overlapping windows, L = 200) . Table IV
-#    Identifier runs (Algorithm 1, step 4), 12 cases of Table II:
-#      one-step MSE, transient-convergence instance ............ Table III
+#      max_k ||phi(k)||^2 ............. Table 7, row 1
+#      full-record lambda_min/lambda_max of the information matrix .. Table 7
+#      mu_L, window PE level (Eq. 18, non-overlapping windows, L = 200) . Table 7
+#    Identifier runs (Algorithm 1, step 4), 12 runs (6 cases of Table 3
+#    x 2 algorithms):
+#      one-step MSE, transient-convergence instance ............ Table 4
 #      sup_k ||J(k)||^2 over ALL runs (SGD and EKF) of a given
-#        architecture, hence alpha* = 2/sup||J||^2 (Cor. 2) ..... Table IV
-#      p_min, p_max, innovation energy sum e^2/S .............. Table IV
+#        architecture, hence alpha* = 2/sup||J||^2 (Cor. 2) ..... Table 7
+#      p_min, p_max, innovation energy sum e^2/S .............. Table 7
 #    Tier-2 constants (Lemma 3, Theorem 3):
 #      c_bar, omega_bar (empirical working-ball radius), M_bar, r_bar
-#      mu_L^J, Jacobian window-PE level (Remark 3) ............ Table IV
-#    Free-run NRMSE fit of the final ARMA and NARX models ...... Table IV
-#    SGD divergence onset from the step-size sweep ............. Section IV-C
-#    Weight-step statistics near vs away from input transitions  Section IV-C
+#      mu_L^J, Jacobian window-PE level (Remark 4) ............ Table 7
+#    Free-run NRMSE fit of the final ARMA and NARX models ...... Table 7
+#    SGD divergence onset from the step-size sweep ............. Section IV-E
+#    Weight-step statistics near vs away from input transitions  Section IV-D
 #
 #  Figures (PNG, 150 dpi, written to the working directory)
 #      fig1_data.png ........ Fig. 1  normalized open-loop dataset
@@ -61,14 +62,15 @@
 #  convergence is well defined, matched to the early-instance view of Fig. 3.
 #
 # -----------------------------------------------------------------------------
-#  NOTE ON THE WEIGHT-STEP STATISTIC  (Section IV-C)
+#  NOTE ON THE WEIGHT-STEP STATISTIC  (Section IV-D)
 # -----------------------------------------------------------------------------
 #  The reported ratio compares like with like: the MEAN step ||w(k)-w(k-1)||
-#  in a small neighbourhood of an input transition against the MEAN step away
-#  from transitions (about 5x). The script also reports how many transitions
-#  exceed the 99th percentile of the whole record (4 of 10) and whether the
-#  single largest step occurs at a transition (it does not), so the limits of
-#  the evidence are visible alongside the headline number.
+#  in a causal window from each input transition to ten instances after it
+#  against the MEAN step away from transitions (about 6x). The script also
+#  reports how many transitions exceed the 99th percentile of the whole record
+#  (5 of 10) and whether the single largest step of the run occurs inside a
+#  transition window (it does), so the limits of the evidence are visible
+#  alongside the headline number.
 # =============================================================================
 import numpy as np, openpyxl, json
 import matplotlib; matplotlib.use("Agg")
@@ -147,7 +149,7 @@ def run(alg, nl, alpha=None, R=None):
         wt.append(w.copy())
     e2 = np.array(e2); wt = np.array(wt); wf = wt[-1]
     omega_bar = float(np.max(np.linalg.norm(wt - wf, axis=1)))
-    # Jacobian window-PE level mu_L^J (Tier-2 analogue of mu_L, Remark 3)
+    # Jacobian window-PE level mu_L^J (Tier-2 analogue of mu_L, Remark 4)
     Jm = np.array(Jlog); muJ = []
     for s0 in range(0, len(Jm)-L+1, L):
         Wj = Jm[s0:s0+L]
@@ -233,7 +235,7 @@ def main():
     for v in (0.0, 0.03, 0.09, 0.5):
         print("v=%.2f:%.2e" % (v, bdbe_ball(v)[1]), end="  ")
     print()
-    print("Jacobian window-PE mu_L^J (Remark 3): ARMA=%.2e  NARX=%.2e"
+    print("Jacobian window-PE mu_L^J (Remark 4): ARMA=%.2e  NARX=%.2e"
           % (R['ARMA-EKF-1.0']['mu_L_J'], R['NARX-EKF-1.0']['mu_L_J']))
 
     for key, nl in [('ARMA-EKF-1.0', False), ('NARX-EKF-1.0', True)]:
@@ -437,10 +439,10 @@ def main():
     print("largest transition at k=" + str(best_j))
 
 
-    # ---------- Table IV summary, every row printed ----------
+    # ---------- Table 7 summary, every row printed ----------
     A, Nx = R['ARMA-EKF-1.0'], R['NARX-EKF-1.0']
     print("\n" + "="*60)
-    print("TABLE IV  (audit quantity ......... ARMA-FNN | NARX-FNN)")
+    print("TABLE 7  (audit quantity ......... ARMA-FNN | NARX-FNN)")
     print("="*60)
     print("max_k ||phi(k)||^2 ................ %6.2f | %6.2f"
           % (stat['max_phi2'], stat['max_phi2']))
