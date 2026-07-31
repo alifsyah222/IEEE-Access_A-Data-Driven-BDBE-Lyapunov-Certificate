@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # =============================================================================
-#  Algorithm 1 - Certificate Audit   (FINAL, full Python, no MATLAB)
-#  Nasution & Mahayana, "A Data-Driven Bounded-Disturbance Bounded-Error
+#  Algorithm 1 - Certificate Audit   (FINAL, full Python)
+#  "A Data-Driven Bounded-Disturbance Bounded-Error
 #  (BDBE) Lyapunov Certificate for Online EKF-Based Neural Identification
 #  of a Batch Distillation Column", IEEE Access, 2026.
 #
@@ -111,7 +111,7 @@ def data_statistics():
     ps, pm = [], []
     for s in range(0, len(X)-L+1, L):
         Wm = X[s:s+L]; pm.append(float(np.linalg.eigvalsh(Wm.T@Wm/L)[0])); ps.append(s+n)
-    mu_L = float(np.median(pm))
+    mu_L = float(np.median(pm))             #median
     # sliding (for figure)
     ss, sm = [], []
     for s in range(0, len(X)-L+1):
@@ -143,7 +143,7 @@ def run(alg, nl, alpha=None, R=None):
             P = P - np.outer(K, J@P)                  # measurement update, no +Q
             innov += e*e/S; innov_curve.append(float(innov))
             ev = np.linalg.eigvalsh(P); pmin, pmax = min(pmin, ev[0]), max(pmax, ev[-1])
-        cbar = max(cbar, float(np.abs(unpack(w)[1]).max()))
+        cbar = max(cbar, float(np.abs(unpack(w)[1]).max()))         #max of output weight
         if not np.isfinite(w).all() or np.abs(w).max() > 1e6:
             return dict(status='diverged')
         wt.append(w.copy())
@@ -184,7 +184,7 @@ def main():
     stat = data_statistics()
     print(f"max||phi||^2={stat['max_phi2']:.3f}  lam_min/max={stat['lam_min']:.2e}/{stat['lam_max']:.3f}  mu_L={stat['mu_L']:.2e}")
 
-    # Shape of the sliding PE profile of Fig. 2, quoted in Section IV-D.
+    # Shape of the sliding PE profile of Fig. 2, quoted in Section IV-E.
     # "Numerical zero" means below 1e-12, i.e. at the level of floating-point
     # noise for a matrix that is positive semidefinite by construction.
     sl = np.array(stat['slide_mu'])
@@ -322,7 +322,7 @@ def main():
     fig.savefig("fig5_sgd_sweep.png", dpi=150); plt.close(fig)
     print("SGD divergence onset: ARMA~" + str(on_a) + ", NARX~" + str(on_n))
 
-    # blow-up instance for large alpha (quoted in Section IV-D; these values
+    # blow-up instance for large alpha (quoted in Section IV-E; these values
     # lie beyond the range plotted in Fig. 5)
     def blowup_instance(nl, alpha):
         w = np.full(O, W0)

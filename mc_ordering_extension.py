@@ -4,12 +4,12 @@
 #  Companion to audit_final.py  (Nasution & Mahayana, IEEE Access, 2026)
 #
 #  Produces the numbers of the revised paper (main.tex):
-#    - Table V  (tab:mc)       : Monte Carlo over 30 randomized initial weights
-#    - Table VI (tab:ordering) : sensitivity to the Q-ordering and to q, reported
+#    - Table 5  (tab:mc)       : Monte Carlo over 30 randomized initial weights
+#    - Table 6 (tab:ordering) : sensitivity to the Q-ordering and to q, reported
 #                                as per-architecture RANGES of the paired relative
 #                                differences (prediction-first vs trailing-+Q),
 #                                over 3 R values x 3 q values (36 EKF runs)
-#    - Runtime / memory report (Section III-E): EKF cost without eigenvalue
+#    - Runtime / memory report (Section III-D): EKF cost without eigenvalue
 #      monitoring (ms/instance), fully-monitored 3000-instance run (s), and
 #      peak resident memory (MB).
 #
@@ -25,7 +25,7 @@ import audit_final as af
 O, N, n = af.O, af.N, af.n
 Q_NOM, P0, W0 = af.Q_, af.P0, af.W0
 E_TOL = af.E_TOL
-K_POST = 300          # post-transient horizon (k >= 300) for Section IV-D
+K_POST = 300          # post-transient horizon (k >= 300) for Section IV-C
 
 
 # --------------------------------------------------- cross-platform peak memory
@@ -96,7 +96,7 @@ def run_ext(alg, nl, alpha=None, R=None, w0=None, q=Q_NOM,
 
 # ---------------------------------------------------------------- Monte Carlo
 def monte_carlo(n_seeds=30):
-    """Table V: 30 randomized inits w_i(0) ~ U[0, 0.10] per case (fixed seed)."""
+    """Table 5: 30 randomized inits w_i(0) ~ U[0, 0.10] per case (fixed seed)."""
     rng = np.random.default_rng(12345)
     out = {}
     for arch, alg, al, Rv in CASES:
@@ -132,7 +132,7 @@ def monte_carlo(n_seeds=30):
 
 # ------------------------------------------------- Q-ordering / q sensitivity
 def ordering_sensitivity():
-    """Table VI: both Q-orderings for every EKF case at q in {1e-7,1e-6,1e-5}."""
+    """Table 6: both Q-orderings for every EKF case at q in {1e-7,1e-6,1e-5}."""
     out = {}
     for arch, alg, al, Rv in CASES:
         if alg != 'EKF':
@@ -161,7 +161,7 @@ def ordering_sensitivity():
     for k, v in rel.items():
         print(f"rel-diff {k:22s} dMSE {v['dMSE_pct']:6.2f}%  dsupJ2 {v['dJ2_pct']:6.2f}%")
 
-    # per-architecture RANGES -> exactly the entries of Table VI (tab:ordering)
+    # per-architecture RANGES -> exactly the entries of Table 6 (tab:ordering)
     summary = {}
     for arch in ('ARMA', 'NARX'):
         dmse = [rel[k]['dMSE_pct'] for k in rel if k.startswith(arch + '-')]
@@ -169,7 +169,7 @@ def ordering_sensitivity():
         summary[arch] = dict(dMSE_min=min(dmse), dMSE_max=max(dmse),
                              dJ2_min=min(dj2), dJ2_max=max(dj2))
     print("-" * 70)
-    print("TABLE VI (paired relative differences, range over 3 R x 3 q = 9 pairs):")
+    print("TABLE 6 (paired relative differences, range over 3 R x 3 q = 9 pairs):")
     for arch in ('ARMA', 'NARX'):
         s = summary[arch]
         print(f"  {arch}-FNN: |dMSE|/MSE {s['dMSE_min']:.1f} to {s['dMSE_max']:.1f}%"
@@ -182,7 +182,7 @@ def ordering_sensitivity():
 
 # --------------------------------- covariance spectrum / Tier-2 ball anatomy
 def spectrum_report():
-    """Section IV-D: the numbers that decompose why the Tier 2 ball is vacuous.
+    """Section IV-C: the numbers that decompose why the Tier 2 ball is vacuous.
 
     Runs one dedicated NARX-EKF pass at R=1 (prediction-first ordering, exactly
     as in audit_final.run) while retaining the full weight trajectory and the
@@ -264,7 +264,7 @@ def spectrum_report():
 
 # ----------------------------------------------------------- runtime / memory
 def runtime_report():
-    """Section III-E: per-instance EKF cost, fully-monitored run, peak memory."""
+    """Section III-D: per-instance EKF cost, fully-monitored run, peak memory."""
     inst = N - n
 
     # (a) EKF WITHOUT eigenvalue monitoring -> paper's "~0.04 ms per instance"
@@ -308,7 +308,7 @@ if __name__ == "__main__":
     mc = monte_carlo(30)
     print("=" * 70); print("Q-ORDERING AND q SENSITIVITY (EKF cases)"); print("=" * 70)
     osens, rel, osummary = ordering_sensitivity()
-    print("=" * 70); print("COVARIANCE SPECTRUM / TIER-2 BALL ANATOMY (Sec. IV-D)"); print("=" * 70)
+    print("=" * 70); print("COVARIANCE SPECTRUM / TIER-2 BALL ANATOMY (Sec. IV-C)"); print("=" * 70)
     spec = spectrum_report()
     print("=" * 70); print("RUNTIME / MEMORY"); print("=" * 70)
     rt = runtime_report()
