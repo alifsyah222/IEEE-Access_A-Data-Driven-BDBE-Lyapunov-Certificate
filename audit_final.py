@@ -31,7 +31,7 @@
 #        architecture, hence alpha* = 2/sup||J||^2 (Cor. 2) ..... Table 7
 #      p_min, p_max, innovation energy sum e^2/S .............. Table 7
 #    Tier-2 constants (Lemma 3, Theorem 3):
-#      c_bar, omega_bar (empirical working-ball radius), M_bar, r_bar
+#      c_bar, omega_bar (empirical ultimate bound), M_bar, r_bar
 #      mu_L^J, Jacobian window-PE level (Remark 4) ............ Table 7
 #    Free-run NRMSE fit of the final ARMA and NARX models ...... Table 7
 #    SGD divergence onset from the step-size sweep ............. Section IV-E
@@ -229,7 +229,7 @@ def main():
     bV, bw = bdbe_ball(0.0)
     print("BDBE ball (Eq. 30, R=1, v_bar=0): limsup V <= %.2e  ->  ||omega|| <= %.2e"
           % (bV, bw))
-    print("  vs empirical working-ball radius %.2f  ->  bound is %.0fx looser"
+    print("  vs empirical ultimate bound %.2f  ->  bound is %.0fx looser"
           % (rep['omega_bar'], bw/rep['omega_bar']))
     print("  sensitivity to v_bar:", end=" ")
     for v in (0.0, 0.03, 0.09, 0.5):
@@ -461,7 +461,7 @@ def main():
     print("sum e^2/S at k=3000 (R=1) ......... %6.3f | %6.3f"
           % (A['innov_energy'], Nx['innov_energy']))
     print("curvature bound M_bar (R=1) ....... %6s | %6.2f" % ("---", M_bar))
-    print("working-ball radius omega_bar ..... %6.2f | %6.2f"
+    print("ultimate bound omega_bar ..... %6.2f | %6.2f"
           % (A['omega_bar'], Nx['omega_bar']))
     print("remainder bound r_bar ............. %6s | %6.2f" % ("---", r_bar))
     print("certified bound on ||omega|| ...... %6s | %6.2f" % ("---", bw))

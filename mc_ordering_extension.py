@@ -214,7 +214,7 @@ def spectrum_report():
     wt = np.array(wt); wf = wt[-1]
     kk = np.arange(n, N)
 
-    # working-ball radius: global and post-transient (distance from final weight)
+    # ultimate bound: global and post-transient (distance from final weight)
     omega_bar = float(np.max(np.linalg.norm(wt - wf, axis=1)))
     post = kk >= K_POST
     omega_bar_post = float(np.max(np.linalg.norm(wt[post] - wf, axis=1)))
