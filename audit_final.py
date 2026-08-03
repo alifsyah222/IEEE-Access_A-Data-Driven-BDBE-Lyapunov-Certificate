@@ -200,7 +200,7 @@ def main():
     R = {}
     for arch, alg, al, Rv in cases:
         r = run(alg, arch == 'NARX', alpha=al, R=Rv)
-        key = f"{arch}-{alg}-{al if al else Rv}"; R[key] = r
+        key = f"{arch}-{alg}-{al if al else Rv}"; R[key] = r        #R here is not measurement noise covariance, it is output run dictionary of all runs.
         print(f"  {key:16s} status = {r['status']:8s} MSE={r.get('MSE')} conv={r.get('conv')} supJ2={round(r.get('supJac2',-1) or -1,3)}")
 
     # sup||J||^2 and alpha* ranges over ALL runs (SGD and EKF) per architecture
