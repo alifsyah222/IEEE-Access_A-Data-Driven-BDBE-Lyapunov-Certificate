@@ -304,9 +304,9 @@ def main():
     ax.axvspan(astar['ARMA'][2], astar['ARMA'][3], color="C0", alpha=0.10)
     ax.axvspan(astar['NARX'][2], astar['NARX'][3], color="C3", alpha=0.10)
     ytop = ax.get_ylim()[1]
-    ax.text(sum(astar['ARMA'][2:])/2, ytop * 0.3, r"$\alpha^{*}_{ARMA}$",
+    ax.text(sum(astar['ARMA'][2:])/2, ytop * 0.5, r"$\alpha^{*}_{ARMA}$",
             color="C0", ha="center", fontsize=8, rotation=90, va="top")
-    ax.text(sum(astar['NARX'][2:])/2, ytop * 0.3, r"$\alpha^{*}_{NARX}$",
+    ax.text(sum(astar['NARX'][2:])/2, ytop * 0.5, r"$\alpha^{*}_{NARX}$",
             color="C3", ha="center", fontsize=8, rotation=90, va="top")
     if on_a is not None:
         ax.axvline(on_a, color="C0", ls=":", lw=1.2)
