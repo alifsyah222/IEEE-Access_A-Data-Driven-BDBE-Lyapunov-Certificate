@@ -440,11 +440,11 @@
   "n_w": 60,
   "N": 3000,
   "instances": 2995,
-  "t_ekf_unmonitored_s": 0.12297079999916605,
-  "ms_per_instance_unmonitored": 0.041058697829437746,
-  "t_ekf_monitored_s": 0.4667611000004399,
-  "ms_per_instance_monitored": 0.155846777963419,
-  "t_sgd_run_s": 0.06039809999856516,
-  "peak_rss_mb": 78.578125
+  "t_ekf_unmonitored_s": 0.11301360000106797,
+  "ms_per_instance_unmonitored": 0.037734090150607004,
+  "t_ekf_monitored_s": 0.5067659999986063,
+  "ms_per_instance_monitored": 0.169204006677331,
+  "t_sgd_run_s": 0.09792030000062368,
+  "peak_rss_mb": 78.37890625
  }
 }

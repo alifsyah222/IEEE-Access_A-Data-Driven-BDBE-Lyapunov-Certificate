@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # =============================================================================
 #  Monte Carlo + Q-ordering sensitivity extension of Algorithm 1
-#  Companion to audit_final.py  (Nasution & Mahayana, IEEE Access, 2026)
+#  Companion to audit_final.py  (IEEE Access, 2026)
 #
-#  Produces the numbers of the revised paper (main.tex):
+#  Produces the numbers of the paper (main.tex):
 #    - Table 5  (tab:mc)       : Monte Carlo over 30 randomized initial weights
 #    - Table 6 (tab:ordering) : sensitivity to the Q-ordering and to q, reported
 #                                as per-architecture RANGES of the paired relative
@@ -79,7 +79,7 @@ def run_ext(alg, nl, alpha=None, R=None, w0=None, q=Q_NOM,
                 S = J @ P @ J + R; K = (P @ J) / S
                 w = w + K * e
                 P = P - np.outer(K, J @ P)
-            else:                                  # thesis form: trailing +Q
+            else:                                  # prior work form: trailing +Q
                 S = J @ P @ J + R; K = (P @ J) / S
                 w = w + K * e
                 P = P - np.outer(K, J @ P) + q * np.eye(O)
