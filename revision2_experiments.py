@@ -166,17 +166,23 @@ for R in (2.0, 1.0, 0.05):
     rhs_rms = V0 + tau*vbar_rms**2/R
     rhs_exact = V0 + np.sum(v**2)/R
     rhs_max = V0 + tau*vbar_max**2/R
+    rhs_curve = V0 + np.cumsum(v**2)/R
+    holds = bool((innov <= rhs_curve).all())
+    margin = float((rhs_curve - innov).min())
     fit, nrmse = freerun_theta(th[-1])
     E1[R] = dict(MSE=float(np.mean(e**2)), conv=conv_instance(e), innov_final=float(innov[-1]),
                  V0=V0, rhs_rms=float(rhs_rms), rhs_exact=float(rhs_exact), rhs_max=float(rhs_max),
                  identity_max_abs_residual=float(np.abs(resid).max()),
+                 bound_holds_every_k=holds, min_margin=margin,
                  pmin=r['pmin'], pmax=r['pmax'], freerun_fit=fit, freerun_nrmse=nrmse,
                  innov_curve=innov.tolist(), V_curve=Vk.tolist(), Vfinal=float(Vk[-1]),
-                 omega_final=float(np.linalg.norm(omk[-1])), omega0=float(np.linalg.norm(om[0])))
+                 omega_final=float(np.linalg.norm(omk[-1])), omega0=float(np.linalg.norm(om[0])))    
     print("R=%5.2f MSE=%.4e conv=%s  sum e^2/S=%.4f  RHS(17): exact=%.4f, tau*vbar_rms^2/R+V0=%.4f, max-v=%.2f  "
-          "| identity residual %.1e | V(N)=%.3e ||omega(N)||=%.3f (||omega(0)||=%.3f) | free-run fit %.1f%%"
+          "| identity residual %.1e | V(N)=%.3e ||omega(N)||=%.3f (||omega(0)||=%.3f) | pmin=%.1e "
+          "| holds=%s (min margin %.1e) | free-run fit %.1f%%"
           % (R, E1[R]['MSE'], E1[R]['conv'], innov[-1], rhs_exact, rhs_rms, rhs_max,
-             E1[R]['identity_max_abs_residual'], Vk[-1], E1[R]['omega_final'], E1[R]['omega0'], fit))
+             E1[R]['identity_max_abs_residual'], Vk[-1], E1[R]['omega_final'], E1[R]['omega0'],
+             E1[R]['pmin'], holds, margin, fit))
 OUT['E1_theta_rls'] = {str(k): {kk: vv for kk, vv in v.items() if kk not in ('innov_curve', 'V_curve')} for k, v in E1.items()}
 np.save("theta_rls_curves.npy", {str(k): (v['innov_curve'], v['V_curve']) for k, v in E1.items()}, allow_pickle=True)
 
@@ -305,11 +311,11 @@ E6 = {}
 grid = [(0.005, 8, 120, 1.5e-4), (0.01, 8, 120, 1.5e-4), (0.02, 8, 120, 1.5e-4),
         (0.01, 4, 120, 1.5e-4), (0.01, 16, 120, 1.5e-4), (0.01, 8, 60, 1.5e-4), (0.01, 8, 240, 1.5e-4),
         (0.01, 8, 120, 1.0e-4), (0.01, 8, 120, 3.0e-4), (0.01, 8, 120, 5.0e-4)]
-hdr = "%-18s" % "run" + "".join("%-14s" % ("t%.3g/h%d/T%d/g%.0e" % g) for g in grid)
+hdr = "%-18s" % "run" + "".join("%-25s" % ("t%.3g/h%d/T%d/g%.1e" % g) for g in grid)
 print(hdr)
 for name, e in runs.items():
     row = [str(conv_instance(e, *g)) for g in grid]; E6[name] = dict(zip([str(g) for g in grid], row))
-    print("%-18s" % name + "".join("%-14s" % c for c in row))
+    print("%-18s" % name + "".join("%-25s" % c for c in row))
 mses = {k: float(np.mean(e**2)) for k, e in runs.items()}
 print("MSE gap: max converged-class MSE = %.2e, min degraded-class MSE = %.2e"
       % (max(v for k, v in mses.items() if conv_instance(runs[k]) != 'degraded'),
@@ -376,11 +382,12 @@ def synth_case(seed):
         x = np.concatenate([us[k-np.arange(0, m+1)], yt[k-np.arange(1, n+1)]]); yt[k] = fwd2(w_true, x)[0]
     ym = yt + rng.uniform(-vb_syn, vb_syn, Ns); ym[:n] = yt[:n]
     Xs = np.array([np.concatenate([us[k-np.arange(0, m+1)], ym[k-np.arange(1, n+1)]]) for k in range(n, Ns)])
-    w = rng.uniform(0, 0.1, Os); P = P0*np.eye(Os); wh, pmx, pmn, eh, Sh = [], [], [], [], []
+    w = rng.uniform(0, 0.1, Os); P = P0*np.eye(Os); wh, pmx, pmn, eh, Sh, Jh = [], [], [], [], [], []
     for i, k in enumerate(range(n, Ns)):
         x = Xs[i]; yn, J = fwd2(w, x); e = ym[k]-yn; P = P + qs*np.eye(Os); S = J@P@J + Rs_; K = P@J/S; w = w + K*e
         P = P - np.outer(K, J@P); ev = np.linalg.eigvalsh(P); pmx.append(ev[-1]); pmn.append(ev[0]); wh.append(w.copy()); eh.append(e); Sh.append(S)
-    wh, pmx, pmn, eh, Sh = map(np.array, (wh, pmx, pmn, eh, Sh))
+        Jh.append(J.copy())
+    wh, pmx, pmn, eh, Sh, Jh = map(np.array, (wh, pmx, pmn, eh, Sh, Jh))
     best = np.inf
     for perm in itertools.permutations(range(Hs)):
         for signs in itertools.product([1, -1], repeat=Hs):
@@ -389,7 +396,11 @@ def synth_case(seed):
             if dd < best: best = dd; wstar = wt2
     om = np.linalg.norm(wstar[None, :]-wh, axis=1)
     hs = np.array([fwd2(wstar, x)[0] for x in Xs]); v = ym[n:]-hs; vmax = float(np.abs(v).max())
+    vrms = float(np.sqrt(np.mean(v**2)))
     mu = np.array([np.linalg.eigvalsh(Xs[s0:s0+L].T@Xs[s0:s0+L]/L)[0] for s0 in range(0, len(Xs)-L+1, L)])
+    muJ = np.array([np.linalg.eigvalsh(Jh[s0:s0+L].T@Jh[s0:s0+L]/L)[0] for s0 in range(0, len(Jh)-L+1, L)])
+    muJ_post = np.array([np.linalg.eigvalsh(Jh[s0:s0+L].T@Jh[s0:s0+L]/L)[0]
+                         for s0 in range(1500, len(Jh)-L+1, L)])
     # free run of the final model
     ys = ym.copy()
     for k in range(n, Ns):
@@ -401,8 +412,15 @@ def synth_case(seed):
         M, r_ = A.curvature(cb+ombar, Xs, ombar); d = vmax + r_; rho = pmax/(pmax+qs); fV = d**2/(Rs_*(1-rho)); ball = float(np.sqrt(pmax*fV))
         dirball = float(np.sqrt(pmin*fV))
         seg[k0] = dict(pmax=pmax, pmin=pmin, omega_bar=ombar, r=float(r_), d=float(d), ball=ball, directional_ball=dirball,
+                       vrms=vrms, r_over_vrms=float(r_/vrms),
+                       amp_mu=float(1/np.sqrt(mu.min())),
+                       amp_muJ=(float(1/np.sqrt(muJ_post.min())) if (k0 and muJ_post.size and muJ_post.min() > 0)
+                                else (float(1/np.sqrt(muJ.min())) if muJ.min() > 0 else float('inf'))),
                        self_consistent=bool(pmax*fV <= ombar**2), MSE=float(np.mean(eh[k0:]**2)), innov=float(np.sum((eh**2/Sh)[k0:])))
-    return dict(om_final=float(om[-1]), vmax=vmax, mu_min=float(mu.min()), mu_med=float(np.median(mu)), fit=fit, seg=seg,
+    return dict(om_final=float(om[-1]), vmax=vmax, vrms=vrms,
+                muJ_min=float(muJ.min()), muJ_med=float(np.median(muJ)),
+                muJ_post_min=float(muJ_post.min()) if muJ_post.size else float('nan'),
+                mu_min=float(mu.min()), mu_med=float(np.median(mu)), fit=fit, seg=seg,
                 om_curve=om, pmax_curve=pmx, MSE=float(np.mean(eh**2)))
 E8 = {}
 best_seed, best_ball = None, np.inf
@@ -410,12 +428,45 @@ for seed in range(1, 13):
     r = synth_case(seed); E8[seed] = {k: v for k, v in r.items() if not k.endswith('curve')}
     s1 = r['seg'][1500]; s0 = r['seg'][0]
     print("seed %2d: mu_L(min)=%.1e | ||omega(N)||=%.3f (nearest symmetric copy) one-step MSE=%.1e free-run fit=%5.1f%% | full-horizon ball=%.1e | "
-          "segment k>=1500: p_max=%.2f omega_bar=%.3f d_bar=%.3f ball=%.1e (dir. %.1e) self-consistent=%s"
-          % (seed, r['mu_min'], r['om_final'], r['MSE'], r['fit'], s0['ball'], s1['pmax'], s1['omega_bar'], s1['d'], s1['ball'], s1['directional_ball'], s1['self_consistent']))
+          "segment k>=1500: p_max=%.2f omega_bar=%.3f r_bar=%.3f d_bar=%.3f v_rms=%.4f r/v_rms=%.1f mu_L=%.1e muJ_L=%.1e 1/sqrt(muJ)=%.1f ball=%.1e (dir. %.1e) self-consistent=%s"
+          % (seed, r['mu_min'], r['om_final'], r['MSE'], r['fit'], s0['ball'], s1['pmax'], s1['omega_bar'], s1['r'], s1['d'],
+             s1['vrms'], s1['r_over_vrms'], r['mu_min'], r['muJ_post_min'], s1['amp_muJ'], s1['ball'], s1['directional_ball'], s1['self_consistent']))
     if s1['ball'] < best_ball: best_ball, best_seed, best_run = s1['ball'], seed, r
 print("best seed %d" % best_seed)
+_amp = [E8[s_]['seg'][1500]['amp_muJ'] for s_ in E8]
+_rv  = [E8[s_]['seg'][1500]['r_over_vrms'] for s_ in E8]
+print("  amplification 1/sqrt(muJ_L) over the 12 seeds: %.1f to %.1f" % (min(_amp), max(_amp)))
+_mj = [E8[s_]['muJ_post_min'] for s_ in E8]
+print("  Jacobian window PE muJ_L (k>=1500):           %.2e to %.2e" % (min(_mj), max(_mj)))
+# which excitation level separates the seeds whose weights converge?
+def _rank(a):
+    a = np.asarray(a, float); r = np.empty(len(a)); r[np.argsort(a)] = np.arange(len(a)); return r
+def _spearman(a, b):
+    ra, rb = _rank(a), _rank(b); ra -= ra.mean(); rb -= rb.mean()
+    return float((ra@rb)/np.sqrt((ra@ra)*(rb@rb)))
+_seeds = sorted(E8)
+_om  = [E8[s_]['om_final'] for s_ in _seeds]
+_muJ = [E8[s_]['muJ_post_min'] for s_ in _seeds]
+_muR = [E8[s_]['mu_min'] for s_ in _seeds]
+rho_J = _spearman(np.log10(_muJ), _om); rho_R = _spearman(np.log10(_muR), _om)
+_conv = sorted(s_ for s_ in _seeds if E8[s_]['om_final'] < 0.9)          # converged seeds
+_topJ = sorted(sorted(_seeds, key=lambda s_: -E8[s_]['muJ_post_min'])[:len(_conv)])
+print("  Spearman rank correlation with ||omega(N)||: muJ_L %.2f, mu_L %.2f" % (rho_J, rho_R))
+print("  converged seeds (||omega(N)||<0.9): %s ; seeds with the largest muJ_L: %s ; identical: %s"
+      % (_conv, _topJ, _conv == _topJ))
+print("  muJ_L on converged seeds: %.1e to %.1e ; on the others: %.1e to %.1e"
+      % (min(E8[s_]['muJ_post_min'] for s_ in _conv), max(E8[s_]['muJ_post_min'] for s_ in _conv),
+         min(E8[s_]['muJ_post_min'] for s_ in _seeds if s_ not in _conv),
+         max(E8[s_]['muJ_post_min'] for s_ in _seeds if s_ not in _conv)))
+E8_sep = dict(spearman_muJ=rho_J, spearman_mu=rho_R, converged=_conv, top_muJ=_topJ,
+              identical=bool(_conv == _topJ))
+print("  remainder/residual r_bar/v_rms:               %.1f to %.1f" % (min(_rv), max(_rv)))
+print("  seed %d (best): r_bar=%.3f, v_rms=%.4f, ratio=%.1f"
+      % (best_seed, E8[best_seed]['seg'][1500]['r'], E8[best_seed]['seg'][1500]['vrms'],
+         E8[best_seed]['seg'][1500]['r_over_vrms']))
 OUT['E8_synthetic_nonlinear'] = {str(k): {kk: (vv if kk != 'seg' else {str(a): b for a, b in vv.items()}) for kk, vv in v.items()} for k, v in E8.items()}
 OUT['E8_synthetic_nonlinear']['config'] = dict(H=Hs, q=qs, R=Rs_, N=Ns, vbar=vb_syn, seeds=12)
+OUT['E8_synthetic_nonlinear']['separation'] = E8_sep
 
 # Tier-1 on a synthetic linear ARMA plant with a PRBS input: Theorem 2 bound vs true error
 rng = np.random.default_rng(2026); us = np.empty(Ns); k = 0
@@ -487,6 +538,41 @@ E9['tanh-derivative Jacobian'] = float(np.mean(np.array(eh)**2)); print("  %-40s
 r = w_ekf(False, 0.05)
 for T in (100, 500, 1000):
     E9[f'MSE over first {T}'] = float(np.mean(r['e'][:T]**2)); print("  %-40s MSE=%.4e" % (f'MSE over first {T} samples', E9[f'MSE over first {T}']))
+
+# --- candidates found by inspecting the released MATLAB livescript ----------
+# The legacy code (a) starts its loop at k = 1 with a zero-padded regressor,
+# (b) scales the hidden layer by der1 = 0.5, and (c) assigns Rekf = 1/alpha
+# after Rekf = 0.05, so the executed R may have been 1.
+def legacy_run(R, der=1.0, from_k1=False, qq=Q_):
+    """ARMA-FNN EKF in weight space with optional MATLAB conventions."""
+    w = np.full(O, W0); P = P0*np.eye(O); eh = []
+    k0 = 0 if from_k1 else n
+    for k in range(k0, N):
+        if from_k1:                                   # zero-padded regressor
+            uu = np.array([u[k-j] if k-j >= 0 else 0.0 for j in range(0, m+1)])
+            yy = np.array([y[k-j] if k-j >= 1 else 0.0 for j in range(1, n+1)])
+            x = np.concatenate([uu, yy])
+        else:
+            x = xvec(k)
+        Wh, Wo = unpack(w); a = der*(Wh@x); yn = Wo@a
+        e = y[k]-yn; eh.append(e)
+        J = np.concatenate([(der*Wo[:, None]*x[None, :]).ravel(), a])
+        P = P+qq*np.eye(O); S = J@P@J+R; K = P@J/S; w = w+K*e; P = P-np.outer(K, J@P)
+        if not np.isfinite(w).all() or np.abs(w).max() > 1e6:
+            return float('nan')
+    return float(np.mean(np.array(eh)**2))
+
+for nm, kw in [('loop from k=1, zero-padded regressor', dict(R=0.05, from_k1=True)),
+               ('hidden-layer scale der1 = 0.5',        dict(R=0.05, der=0.5)),
+               ('both (k=1 and der1 = 0.5)',            dict(R=0.05, der=0.5, from_k1=True)),
+               ('R = 1 (Rekf = 1/alpha overwrites)',    dict(R=1.0)),
+               ('R = 1, k=1, der1 = 0.5',               dict(R=1.0, der=0.5, from_k1=True))]:
+    E9[nm] = legacy_run(**kw); print("  %-40s MSE=%.4e" % (nm, E9[nm]))
+
+_tgt = 2.3587e-4
+_fin = {kk: vv for kk, vv in E9.items() if np.isfinite(vv)}
+_best = min(_fin, key=lambda kk: abs(np.log10(_fin[kk]/_tgt)))
+print("  -> closest to the earlier %.4e: %s (ratio %.2f)" % (_tgt, _best, _fin[_best]/_tgt))
 OUT['E9_matlab_discrepancy'] = E9
 
 # ----------------------------------------------------------------------------
