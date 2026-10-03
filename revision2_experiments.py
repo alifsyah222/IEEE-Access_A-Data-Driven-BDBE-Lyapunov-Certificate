@@ -472,7 +472,10 @@ OUT['E8_synthetic_nonlinear']['separation'] = E8_sep
 rng = np.random.default_rng(2026); us = np.empty(Ns); k = 0
 while k < Ns:
     h = int(rng.integers(3, 11)); us[k:k+h] = rng.choice(np.linspace(0.0, 1.0, 8)); k += h
-theta_true = np.array([0.10, 0.08, 0.06, 0.04, 0.03, 0.02, 0.9, -0.3, 0.15, -0.08, 0.05])   # full-order ARX plant, dominant pole ~0.9
+theta_true = np.array([0.10, 0.08, 0.06, 0.04, 0.03, 0.02, 0.9, -0.3, 0.15, -0.08, 0.05])   # full-order ARX plant, dominant pole modulus ~0.74 (largest root of z^5 - 0.9 z^4 + 0.3 z^3 - 0.15 z^2 + 0.08 z - 0.05)
+_poles = np.roots(np.concatenate(([1.0], -theta_true[m+1:])))
+print("synthetic linear plant: poles %s | largest modulus %.3f | stable: %s"
+      % (np.round(_poles, 3), np.abs(_poles).max(), bool(np.abs(_poles).max() < 1)))
 yl = np.zeros(Ns)
 for k in range(n, Ns):
     phi = np.concatenate([us[k-np.arange(0, m+1)], yl[k-np.arange(1, n+1)]]); yl[k] = phi@theta_true
@@ -498,6 +501,7 @@ print("synthetic linear plant: EIV bias ||theta_LS-theta_true||=%.3f; mu_L(min)=
       "bound holds at every k: %s" % (eiv_bias, mu_l.min(), np.median(mu_l), vbar_l, om_l[-1]**2, bound[-1], bound[-1]/om_l[-1]**2, bound_rms[-1], bool((om_l**2 <= bound).all())))
 OUT['E8_synthetic_linear'] = dict(dir_true_final=float(dir_true[-1]), dir_bound_final=float(dir_bound[-1]), eiv_bias=eiv_bias, mu_L_min=float(mu_l.min()), mu_L_median=float(np.median(mu_l)), vbar=vbar_l, omega_final_sq=float(om_l[-1]**2),
                                   bound_final=float(bound[-1]), bound_final_exactsum=float(bound_rms[-1]), holds=bool((om_l**2 <= bound).all()))
+OUT['E8_synthetic_linear']['pole_modulus_max'] = float(np.abs(_poles).max())
 E8lin = dict(om=om_l, bound=bound, bound_rms=bound_rms, dir_true=dir_true, dir_bound=dir_bound)
 
 # ----------------------------------------------------------------------------
@@ -622,10 +626,10 @@ fig.tight_layout(); fig.savefig("fig10_synth.png", dpi=150); plt.close(fig)
 
 # Fig 11 (new): synthetic linear plant: Theorem 2 bound vs true squared error
 fig, ax = plt.subplots(figsize=(6, 3.0))
-ax.semilogy(np.arange(n, n+len(E8lin['om'])), E8lin['om']**2, 'C0', lw=1.1, label=r'true $\|\omega(\tau)\|^2$ ($\theta$-RLS, $R=1$, $Q=0$)')
+ax.semilogy(np.arange(n, n+len(E8lin['om'])), E8lin['om']**2, 'C0', lw=1.1, label=r'$\|\omega(\tau)\|^2$ relative to $\theta_{\rm LS}$ ($\theta$-RLS, $R=1$, $Q=0$)')
 ax.semilogy(np.arange(n, n+len(E8lin['om'])), E8lin['bound'], 'k--', lw=1, label=r'bound (19), $\bar v=\max|v|$, measured $\mu_L$')
 ax.semilogy(np.arange(n, n+len(E8lin['om'])), E8lin['bound_rms'], 'k:', lw=1, label=r'bound (19) with exact $\sum v^2/R$')
-ax.semilogy(np.arange(n, n+len(E8lin['om'])), E8lin['dir_true'], 'C3', lw=1.0, label=r'true $(z^\top\omega)^2$, best-excited direction $z$')
+ax.semilogy(np.arange(n, n+len(E8lin['om'])), E8lin['dir_true'], 'C3', lw=1.0, label=r'$(z^\top\omega)^2$ relative to $\theta_{\rm LS}$, best-excited direction $z$')
 ax.semilogy(np.arange(n, n+len(E8lin['om'])), E8lin['dir_bound'], 'C3', ls='--', lw=1.0, label=r'directional bound (20), same $z$')
 ax.set_xlabel(r'instance $\tau$'); ax.set_ylabel('squared parameter error'); ax.legend(fontsize=7)
 ax.set_title('Theorem 2 on a persistently exciting synthetic linear record', fontsize=9); fig.tight_layout(); fig.savefig("fig11_synth_linear.png", dpi=150); plt.close(fig)

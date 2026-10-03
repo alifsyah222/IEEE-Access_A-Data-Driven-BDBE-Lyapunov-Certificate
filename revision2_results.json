@@ -1222,7 +1222,8 @@
   "omega_final_sq": 0.0001444995306409008,
   "bound_final": 24.644338168671272,
   "bound_final_exactsum": 1.2997379351945384,
-  "holds": true
+  "holds": true,
+  "pole_modulus_max": 0.7383310823708764
  },
  "E9_matlab_discrepancy": {
   "nominal (prediction-first, q=1e-6)": 3.351423860887194e-05,
