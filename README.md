@@ -1,33 +1,14 @@
-# IEEE Access Paper Bundle (2026)
+# Code and data for an IEEE Access paper (2026)
 
 ## A Data-Driven Bounded-Disturbance Bounded-Error (BDBE) Lyapunov Certificate for Online EKF-Based Neural Identification of a Batch Distillation Column
 
-Everything in this bundle is reproducible with four Python scripts: three on
+This repository contains the code and data behind the paper. Every number
+and figure in it is reproducible with four Python scripts: three on
 the public ITB distillation dataset (one of them also runs the synthetic
 benchmarks) and one on the public Cascaded Tanks benchmark. No MATLAB is used.
 
 Archived version cited in the paper (v2.0.0):
 <https://doi.org/10.5281/zenodo.23116303>
-
----
-
-## Compile the paper
-
-The bibliography is external (`references.bib`), so BibTeX must be run:
-
-```bash
-pdflatex main.tex
-bibtex   main
-pdflatex main.tex
-pdflatex main.tex     # third pass resolves all cross-references
-```
-
-Requires `ieeeaccess.cls`, `IEEEtran.cls`, `IEEEtran.bst`, and the PNG assets
-(all included except `IEEEtran.bst`, which ships with TeX Live and Overleaf).
-Output: `main.pdf`, two-column IEEE Access format.
-
-On Overleaf: upload the whole folder, set the compiler to **pdfLaTeX**, and
-press Recompile twice.
 
 ---
 
@@ -96,17 +77,17 @@ columns `uEst, uVal, yEst, yVal` (1024 samples each) in that order.
 > (`pip install psutil`, already in `requirements.txt`). Without it every other
 > number is still produced; only the memory line reports "unavailable".
 
-### Figure files and paper figures
+### Figures
 
-The file names keep the numbering of the first draft, so they do not all match
-the figure numbers of the paper:
+The figures are not stored in the repository; each script writes its PNG files
+when it runs. The file names keep the numbering of the first draft, so they do
+not all match the figure numbers of the paper:
 
 | paper | file | script |
 |---|---|---|
-| Figs. 1-3, 5 | `fig1_*.png`, `fig2_*.png`, `fig3_*.png`, `fig5_*.png` | `audit_final.py` |
+| Figs. 1-3, 5, 7-9 | `fig1_data.png` .. `fig8_zoom.png` (except the Fig. 4 file) | `audit_final.py` |
 | Fig. 4 | `fig4_innov.png` | `revision2_experiments.py` |
 | Fig. 6 | `fig9_floor_vs_R.png` | `revision2_experiments.py` |
-| Figs. 7-9 | `fig6_*.png`, `fig7_*.png`, `fig8_zoom.png` | `audit_final.py` |
 | Figs. 10-11 | `fig10_synth.png`, `fig11_synth_linear.png` | `revision2_experiments.py` |
 | Fig. 12 | `fig12_cts.png` | `benchmark_cts.py` |
 
@@ -116,10 +97,8 @@ the figure numbers of the paper:
 
 | file | contents |
 |---|---|
-| `main.tex` | the paper (`ieeeaccess.cls`) |
-| `references.bib` | 41 references, BibTeX |
-| `main.pdf` | compiled output |
 | `audit_final.py` | Algorithm 1, full Python implementation |
+| `results.json` | outputs of the nominal audit |
 | `mc_ordering_extension.py` | revision 1 experiments: Monte Carlo, ordering sensitivity, Sec. IV-D spectrum, runtime |
 | `mc_results.json` | outputs of the revision 1 experiments |
 | `revision2_experiments.py` | revision 2 experiments E1-E9 |
@@ -130,9 +109,6 @@ the figure numbers of the paper:
 | `asli1_datatraining_31.xlsx` | public dataset (columns `u`, `ys`), 3000 samples |
 | `requirements.txt` | minimum dependency versions |
 | `requirements_lock.txt` | exact versions used to produce the reported numbers |
-| `fig*.png` | figures, see the table above |
-| `figs/alifsyah.jpeg`, `figs/dimitri.png` | author photos |
-| `ieeeaccess.cls`, `IEEEtran.cls`, `Logo.png`, `bullet.png`, ... | template assets |
 
 Dataset and Arduino acquisition sketch:
 <https://github.com/alifsyah222/Tesis-Distilasi-Public>
