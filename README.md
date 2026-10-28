@@ -7,9 +7,6 @@ and figure in it is reproducible with four Python scripts: three on
 the public ITB distillation dataset (one of them also runs the synthetic
 benchmarks) and one on the public Cascaded Tanks benchmark. No MATLAB is used.
 
-Archived version cited in the paper (v2.0.0):
-<https://doi.org/10.5281/zenodo.23116303>
-
 ---
 
 ## Reproduce every number and figure
