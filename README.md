@@ -85,9 +85,13 @@ not all match the figure numbers of the paper:
 
 | paper | file | script |
 |---|---|---|
-| Figs. 1-3, 5, 7-9 | `fig1_data.png` .. `fig8_zoom.png` (except the Fig. 4 file) | `audit_final.py` |
+| Fig. 1 | `fig1_data.png` | `audit_final.py` |
+| Fig. 2 | `fig2_pe.png` | `audit_final.py` |
+| Fig. 3 | `fig3_conv.png` | `audit_final.py` |
 | Fig. 4 | `fig4_innov.png` | `revision2_experiments.py` |
+| Fig. 5 | `fig5_sgd_sweep.png` | `audit_final.py` |
 | Fig. 6 | `fig9_floor_vs_R.png` | `revision2_experiments.py` |
+| Figs. 7-9 | `fig6_pred_full.png`, `fig7_weights.png`, `fig8_zoom.png` | `audit_final.py` |
 | Figs. 10-11 | `fig10_synth.png`, `fig11_synth_linear.png` | `revision2_experiments.py` |
 | Fig. 12 | `fig12_cts.png` | `benchmark_cts.py` |
 
